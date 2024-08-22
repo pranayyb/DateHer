@@ -1,0 +1,6 @@
+__pycache__
+.ipynb_checkpoints
+chatbot_model.h5
+emotion.pkl
+tokenizer.pickle
+
