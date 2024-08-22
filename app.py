@@ -15,6 +15,7 @@ import re
 import pandas as pd
 import httpx
 import datetime
+import logging
 from nltk.corpus import stopwords
 from tensorflow.keras.preprocessing.text import one_hot
 from sklearn.metrics.pairwise import cosine_similarity
@@ -38,9 +39,6 @@ from scoring import (
     calculate_mutual_commitmentC,
     calculate_conflict_resolution_scoreC,
     calculate_final_scoreC,
-)
-
-from scoring import (
     calculate_shared_interests,
     calculate_value_match,
     calculate_communication_style_score,
@@ -57,711 +55,6 @@ voc_size = 10000
 sent_length = 20
 
 CONVERSATION_THRESHOLD = 50
-
-# users = pd.DataFrame(
-#     [
-#         {
-#             "user_id": 1,
-#             "name": "Alice",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "hiking, reading, traveling,cycling",
-#         },
-#         {
-#             "user_id": 2,
-#             "name": "Bob",
-#             "age": 30,
-#             "location": "SF",
-#             "interests": "cooking, traveling, movies",
-#         },
-#         {
-#             "user_id": 3,
-#             "name": "Charlie",
-#             "age": 26,
-#             "location": "LA",
-#             "interests": "sports, reading, music",
-#         },
-#         {
-#             "user_id": 4,
-#             "name": "Diana",
-#             "age": 25,
-#             "location": "NY",
-#             "interests": "yoga, traveling, photography",
-#         },
-#         {
-#             "user_id": 5,
-#             "name": "Eve",
-#             "age": 29,
-#             "location": "SF",
-#             "interests": "cooking, yoga, meditation",
-#         },
-#         {
-#             "user_id": 6,
-#             "name": "Frank",
-#             "age": 27,
-#             "location": "LA",
-#             "interests": "movies, gaming, traveling",
-#         },
-#         {
-#             "user_id": 7,
-#             "name": "Grace",
-#             "age": 31,
-#             "location": "NY",
-#             "interests": "painting, music, hiking",
-#         },
-#         {
-#             "user_id": 8,
-#             "name": "Hank",
-#             "age": 32,
-#             "location": "SF",
-#             "interests": "sports, cooking, traveling",
-#         },
-#         {
-#             "user_id": 9,
-#             "name": "Ivy",
-#             "age": 24,
-#             "location": "LA",
-#             "interests": "photography, music, reading",
-#         },
-#         {
-#             "user_id": 10,
-#             "name": "Jake",
-#             "age": 33,
-#             "location": "NY",
-#             "interests": "traveling, gaming, sports",
-#         },
-#         {
-#             "user_id": 11,
-#             "name": "Kara",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "yoga, meditation, cooking",
-#         },
-#         {
-#             "user_id": 12,
-#             "name": "Liam",
-#             "age": 28,
-#             "location": "LA",
-#             "interests": "movies, traveling, reading",
-#         },
-#         {
-#             "user_id": 13,
-#             "name": "Mia",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "painting, yoga, hiking",
-#         },
-#         {
-#             "user_id": 14,
-#             "name": "Noah",
-#             "age": 29,
-#             "location": "SF",
-#             "interests": "sports, cooking, gaming",
-#         },
-#         {
-#             "user_id": 15,
-#             "name": "Olivia",
-#             "age": 26,
-#             "location": "LA",
-#             "interests": "photography, traveling, music",
-#         },
-#         {
-#             "user_id": 16,
-#             "name": "Paul",
-#             "age": 31,
-#             "location": "NY",
-#             "interests": "gaming, movies, hiking",
-#         },
-#         {
-#             "user_id": 17,
-#             "name": "Quinn",
-#             "age": 32,
-#             "location": "SF",
-#             "interests": "cooking, sports, traveling",
-#         },
-#         {
-#             "user_id": 18,
-#             "name": "Ruth",
-#             "age": 25,
-#             "location": "LA",
-#             "interests": "yoga, painting, reading",
-#         },
-#         {
-#             "user_id": 19,
-#             "name": "Sam",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "sports, gaming, traveling",
-#         },
-#         {
-#             "user_id": 20,
-#             "name": "Tina",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "photography, yoga, music",
-#         },
-#         {
-#             "user_id": 21,
-#             "name": "Uma",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "reading, traveling, cooking",
-#         },
-#         {
-#             "user_id": 22,
-#             "name": "Vince",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "gaming, sports, movies",
-#         },
-#         {
-#             "user_id": 23,
-#             "name": "Wendy",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "painting, hiking, yoga",
-#         },
-#         {
-#             "user_id": 24,
-#             "name": "Xander",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "traveling, music, cooking",
-#         },
-#         {
-#             "user_id": 25,
-#             "name": "Yara",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "photography, sports, reading",
-#         },
-#         {
-#             "user_id": 26,
-#             "name": "Zane",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "gaming, traveling, movies",
-#         },
-#         {
-#             "user_id": 27,
-#             "name": "Abby",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "yoga, music, hiking",
-#         },
-#         {
-#             "user_id": 28,
-#             "name": "Ben",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "cooking, traveling, gaming",
-#         },
-#         {
-#             "user_id": 29,
-#             "name": "Cara",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "painting, photography, reading",
-#         },
-#         {
-#             "user_id": 30,
-#             "name": "David",
-#             "age": 32,
-#             "location": "LA",
-#             "interests": "sports, gaming, music",
-#         },
-#         {
-#             "user_id": 31,
-#             "name": "Ellie",
-#             "age": 24,
-#             "location": "NY",
-#             "interests": "yoga, cooking, traveling",
-#         },
-#         {
-#             "user_id": 32,
-#             "name": "Finn",
-#             "age": 28,
-#             "location": "SF",
-#             "interests": "photography, reading, gaming",
-#         },
-#         {
-#             "user_id": 33,
-#             "name": "Gina",
-#             "age": 27,
-#             "location": "LA",
-#             "interests": "painting, music, hiking",
-#         },
-#         {
-#             "user_id": 34,
-#             "name": "Harry",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "traveling, sports, movies",
-#         },
-#         {
-#             "user_id": 35,
-#             "name": "Isla",
-#             "age": 29,
-#             "location": "SF",
-#             "interests": "yoga, cooking, photography",
-#         },
-#         {
-#             "user_id": 36,
-#             "name": "Jack",
-#             "age": 26,
-#             "location": "LA",
-#             "interests": "gaming, hiking, reading",
-#         },
-#         {
-#             "user_id": 37,
-#             "name": "Kelly",
-#             "age": 31,
-#             "location": "NY",
-#             "interests": "painting, music, traveling",
-#         },
-#         {
-#             "user_id": 38,
-#             "name": "Leo",
-#             "age": 32,
-#             "location": "SF",
-#             "interests": "sports, cooking, gaming",
-#         },
-#         {
-#             "user_id": 39,
-#             "name": "Maya",
-#             "age": 25,
-#             "location": "LA",
-#             "interests": "yoga, traveling, reading",
-#         },
-#         {
-#             "user_id": 40,
-#             "name": "Nate",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "gaming, movies, hiking",
-#         },
-#         {
-#             "user_id": 41,
-#             "name": "Olga",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "photography, cooking, traveling",
-#         },
-#         {
-#             "user_id": 42,
-#             "name": "Pete",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "sports, reading, music",
-#         },
-#         {
-#             "user_id": 43,
-#             "name": "Quincy",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "traveling, cooking, gaming",
-#         },
-#         {
-#             "user_id": 44,
-#             "name": "Rachel",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "yoga, painting, photography",
-#         },
-#         {
-#             "user_id": 45,
-#             "name": "Steve",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "gaming, sports, hiking",
-#         },
-#         {
-#             "user_id": 46,
-#             "name": "Tara",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "reading, traveling, music",
-#         },
-#         {
-#             "user_id": 47,
-#             "name": "Umar",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "cooking, sports, movies",
-#         },
-#         {
-#             "user_id": 48,
-#             "name": "Vera",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "yoga, photography, traveling",
-#         },
-#         {
-#             "user_id": 49,
-#             "name": "Will",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "gaming, reading, sports",
-#         },
-#         {
-#             "user_id": 50,
-#             "name": "Xena",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "painting, hiking, yoga",
-#         },
-#         {
-#             "user_id": 51,
-#             "name": "Yuri",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "music, traveling, cooking",
-#         },
-#         {
-#             "user_id": 52,
-#             "name": "Zoe",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "photography, reading, movies",
-#         },
-#         {
-#             "user_id": 53,
-#             "name": "Adam",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "hiking, gaming, cooking",
-#         },
-#         {
-#             "user_id": 54,
-#             "name": "Bella",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "yoga, music, traveling",
-#         },
-#         {
-#             "user_id": 55,
-#             "name": "Chris",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "sports, gaming, reading",
-#         },
-#         {
-#             "user_id": 56,
-#             "name": "Dana",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "photography, hiking, yoga",
-#         },
-#         {
-#             "user_id": 57,
-#             "name": "Eli",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "music, traveling, movies",
-#         },
-#         {
-#             "user_id": 58,
-#             "name": "Faith",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "cooking, reading, sports,cycling",
-#         },
-#         {
-#             "user_id": 59,
-#             "name": "George",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "gaming, music, traveling",
-#         },
-#         {
-#             "user_id": 60,
-#             "name": "Holly",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "yoga, photography, hiking",
-#         },
-#         {
-#             "user_id": 61,
-#             "name": "Ian",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "traveling, cooking, movies",
-#         },
-#         {
-#             "user_id": 62,
-#             "name": "Jade",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "sports, reading, music",
-#         },
-#         {
-#             "user_id": 63,
-#             "name": "Kyle",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "hiking, gaming, traveling",
-#         },
-#         {
-#             "user_id": 64,
-#             "name": "Lily",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "photography, music, yoga",
-#         },
-#         {
-#             "user_id": 65,
-#             "name": "Max",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "cooking, sports, movies",
-#         },
-#         {
-#             "user_id": 66,
-#             "name": "Nina",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "yoga, hiking, reading",
-#         },
-#         {
-#             "user_id": 67,
-#             "name": "Oscar",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "gaming, traveling, sports",
-#         },
-#         {
-#             "user_id": 68,
-#             "name": "Paige",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "photography, cooking, music",
-#         },
-#         {
-#             "user_id": 69,
-#             "name": "Ryan",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "hiking, reading, gaming",
-#         },
-#         {
-#             "user_id": 70,
-#             "name": "Sophie",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "traveling, yoga, painting",
-#         },
-#         {
-#             "user_id": 71,
-#             "name": "Tom",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "sports, gaming, music",
-#         },
-#         {
-#             "user_id": 72,
-#             "name": "Uma",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "photography, hiking, reading",
-#         },
-#         {
-#             "user_id": 73,
-#             "name": "Victor",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "cooking, traveling, gaming",
-#         },
-#         {
-#             "user_id": 74,
-#             "name": "Wendy",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "yoga, music, photography",
-#         },
-#         {
-#             "user_id": 75,
-#             "name": "Xander",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "hiking, reading, sports",
-#         },
-#         {
-#             "user_id": 76,
-#             "name": "Yara",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "traveling, gaming, cooking",
-#         },
-#         {
-#             "user_id": 77,
-#             "name": "Zane",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "music, yoga, photography,gaming",
-#         },
-#         {
-#             "user_id": 78,
-#             "name": "Ava",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "hiking, reading, traveling",
-#         },
-#         {
-#             "user_id": 79,
-#             "name": "Blake",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "gaming, cooking, sports",
-#         },
-#         {
-#             "user_id": 80,
-#             "name": "Clara",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "photography, yoga, music",
-#         },
-#         {
-#             "user_id": 81,
-#             "name": "Derek",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "traveling, gaming, hiking",
-#         },
-#         {
-#             "user_id": 82,
-#             "name": "Eva",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "yoga, music, reading",
-#         },
-#         {
-#             "user_id": 83,
-#             "name": "Felix",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "sports, cooking, traveling",
-#         },
-#         {
-#             "user_id": 84,
-#             "name": "Gail",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "photography, hiking, gaming",
-#         },
-#         {
-#             "user_id": 85,
-#             "name": "Hugo",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "reading, music, yoga",
-#         },
-#         {
-#             "user_id": 86,
-#             "name": "Isabella",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "cooking, gaming, traveling",
-#         },
-#         {
-#             "user_id": 87,
-#             "name": "Jason",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "hiking, sports, photography",
-#         },
-#         {
-#             "user_id": 88,
-#             "name": "Kate",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "yoga, reading, music",
-#         },
-#         {
-#             "user_id": 89,
-#             "name": "Landon",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "traveling, gaming, cooking",
-#         },
-#         {
-#             "user_id": 90,
-#             "name": "Mia",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "photography, hiking, music",
-#         },
-#         {
-#             "user_id": 91,
-#             "name": "Nathan",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "sports, yoga, gaming",
-#         },
-#         {
-#             "user_id": 92,
-#             "name": "Olivia",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "reading, cooking, traveling",
-#         },
-#         {
-#             "user_id": 93,
-#             "name": "Parker",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "hiking, music, yoga",
-#         },
-#         {
-#             "user_id": 94,
-#             "name": "Quinn",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "gaming, cooking, sports",
-#         },
-#         {
-#             "user_id": 95,
-#             "name": "Rose",
-#             "age": 27,
-#             "location": "SF",
-#             "interests": "traveling, photography, music",
-#         },
-#         {
-#             "user_id": 96,
-#             "name": "Sean",
-#             "age": 29,
-#             "location": "LA",
-#             "interests": "hiking, reading, cooking",
-#         },
-#         {
-#             "user_id": 97,
-#             "name": "Tina",
-#             "age": 30,
-#             "location": "NY",
-#             "interests": "yoga, music, traveling",
-#         },
-#         {
-#             "user_id": 98,
-#             "name": "Ulysses",
-#             "age": 26,
-#             "location": "SF",
-#             "interests": "gaming, sports, photography",
-#         },
-#         {
-#             "user_id": 99,
-#             "name": "Vera",
-#             "age": 31,
-#             "location": "LA",
-#             "interests": "reading, cooking, hiking",
-#         },
-#         {
-#             "user_id": 100,
-#             "name": "Wyatt",
-#             "age": 28,
-#             "location": "NY",
-#             "interests": "traveling, music, gaming",
-#         },
-#     ]
-# )
 
 label_mapping = {
     0: "apologize_after_fight",
@@ -799,10 +92,6 @@ label_mapping = {
 }
 
 app = FastAPI()
-# CORS(app)
-# cors = CORS(app, resources={r"/": {"origins": ""}})
-# cors = CORS(app, resources={r"/": {"origins": "*"}})
-# cors = CORS(app, resources={r"/match": {"origins": "*"}})
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
@@ -817,13 +106,11 @@ with open("tokenizer.pickle", "rb") as handle:
 with open("emotion.pkl", "rb") as f:
     emotion = pickle.load(f)
 
-
 def predict(text):
     pred = model.predict(pad_sequences(tokenizer.texts_to_sequences([text]), maxlen=16))
     prediction = np.argmax(pred)
     predicted_label = label_mapping[prediction]
     return predicted_label
-
 
 def answer(text):
     predicted_label = predict(text)
@@ -859,6 +146,25 @@ responses = {
 class ChatRequest(BaseModel):
     user_id: str
     message: Optional[str] = None
+
+
+class UserMessage(BaseModel):
+    text: str
+    createdAt: dict
+
+
+class CalcRequest(BaseModel):
+    user1: dict
+    user2: dict
+    message: List[UserMessage]
+
+
+class MatchRequest(BaseModel):
+    user_id: str
+
+
+class TonePredictRequest(BaseModel):
+    text: str
 
 
 @app.post("/chat")
@@ -993,25 +299,6 @@ async def chat(data: ChatRequest):
     return response_data
 
 
-class UserMessage(BaseModel):
-    text: str
-    createdAt: dict
-
-
-class CalcRequest(BaseModel):
-    user1: dict
-    user2: dict
-    message: List[UserMessage]
-
-
-class MatchRequest(BaseModel):
-    user_id: str
-
-
-class TonePredictRequest(BaseModel):
-    text: str
-
-
 @app.post("/calc")
 async def calc(data: CalcRequest):
     comp_score = 0
@@ -1072,15 +359,6 @@ async def calc(data: CalcRequest):
     return {"comp_score": comp_score}
 
 
-# async def fetch_get(url):
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get(url) as response:
-#             get_response = await response.text()
-#             print(f"GET request to {url} completed with response: {get_response}")
-#             return get_response
-
-import logging
-
 @app.post("/match")
 async def match(data: MatchRequest):
 
@@ -1106,7 +384,6 @@ async def match(data: MatchRequest):
     # print(type(user_id))
     # print(type(users["id"]))
 
-
     current_user = users[users["id"] == user_id]
     if current_user.empty:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1117,9 +394,7 @@ async def match(data: MatchRequest):
     age_max = int(current_user["age"]) + 2
 
     potential_matches = users[
-        (users["age"] >= age_min)
-        & (users["age"] <= age_max)
-        & (users["id"] != user_id)
+        (users["age"] >= age_min) & (users["age"] <= age_max) & (users["id"] != user_id)
     ]
 
     if potential_matches.empty:
@@ -1150,32 +425,6 @@ async def match(data: MatchRequest):
     ].to_dict(orient="records")
 
     return result
-
-
-# @app.route("/tonepredict", methods=["POST"])
-# def tonepredict():
-#     data = request.json
-#     text = data.get('text', '')
-
-#     text = re.sub("[^a-zA-Z]", " ", text)
-#     text = text.lower()
-#     text = text.split()
-#     text = [
-#         lemmatizer.lemmatize(word)
-#         for word in text
-#         if word not in stopwords.words("english")
-#     ]
-#     text = " ".join(text)
-
-#     onehot_repr = [one_hot(text, voc_size)]
-#     embedded_text = pad_sequences(onehot_repr, padding="post", maxlen=sent_length)
-#     X_final = np.array(embedded_text)
-
-#     y_pred = emotion.predict(X_final)
-#     y_pred_classes = np.argmax(y_pred, axis=1)
-#     sent_emotion = emotion_dict.get(y_pred_classes[0], "unknown")
-
-#     return jsonify({'emotion': sent_emotion})
 
 
 @app.post("/tonepredict")

@@ -3,4 +3,4 @@ __pycache__
 chatbot_model.h5
 emotion.pkl
 tokenizer.pickle
-
+.DS_Store
