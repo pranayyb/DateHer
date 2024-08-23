@@ -367,24 +367,31 @@ async def match(data: MatchRequest):
             "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/getboys"
         )
     boys_data = response.json()
-    # print(boys_data)
-    # print(response)
+    
+    async with httpx.AsyncClient() as client:
+        response2 = await client.get(
+            "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/getgirls"
+        )
+    girls_data = response2.json()
+    
     if response.status_code != 200:
         raise HTTPException(
             status_code=response.status_code,
             detail="Failed to retrieve data from external API",
         )
+    if response2.status_code != 200:
+        raise HTTPException(
+            status_code=response2.status_code,
+            detail="Failed to retrieve data from external API",
+        )
 
-    users = pd.DataFrame(boys_data)
-    # print(users)
-    # print(users.shape)
-    # print(users.columns)
+    girls = pd.DataFrame(girls_data)
+    boys = pd.DataFrame(boys_data)
 
     user_id = int(data.user_id)
-    # print(type(user_id))
-    # print(type(users["id"]))
 
-    current_user = users[users["id"] == user_id]
+    current_user = girls[girls["id"] == user_id]
+    
     if current_user.empty:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -393,8 +400,8 @@ async def match(data: MatchRequest):
     age_min = int(current_user["age"]) - 2
     age_max = int(current_user["age"]) + 2
 
-    potential_matches = users[
-        (users["age"] >= age_min) & (users["age"] <= age_max) & (users["id"] != user_id)
+    potential_matches = boys[
+        (boys["age"] >= age_min) & (boys["age"] <= age_max) & (boys["id"] != user_id)
     ]
 
     if potential_matches.empty:
@@ -418,7 +425,7 @@ async def match(data: MatchRequest):
 
     potential_matches = potential_matches.sort_values(by="similarity", ascending=False)
 
-    top_matches = potential_matches.head()
+    top_matches = potential_matches
 
     result = top_matches[
         ["id", "first_name", "last_name", "age", "location", "interests", "similarity"]
