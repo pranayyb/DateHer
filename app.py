@@ -22,6 +22,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.stem import WordNetLemmatizer
 from flask_cors import CORS
+import asyncio
+import requests
 
 
 with open("intents.json") as f:
@@ -106,11 +108,13 @@ with open("tokenizer.pickle", "rb") as handle:
 with open("emotion.pkl", "rb") as f:
     emotion = pickle.load(f)
 
+
 def predict(text):
     pred = model.predict(pad_sequences(tokenizer.texts_to_sequences([text]), maxlen=16))
     prediction = np.argmax(pred)
     predicted_label = label_mapping[prediction]
     return predicted_label
+
 
 def answer(text):
     predicted_label = predict(text)
@@ -193,20 +197,17 @@ async def chat(data: ChatRequest):
             "current_question_index": 0,
             "interests": [],
             "values": [],
-            "style": ["commitment"],
+            "style": ["i"],
             "traits": [],
             "state": "intro",
+            "commitment": [""],
+            "resolution": [""],
         }
 
     user_info = user_data[user_id]
     conversation = user_info["conversation"]
     current_question_index = user_info["current_question_index"]
     state = user_info["state"]
-
-    # print(current_question_index)
-    # print(user_message)
-    # if user_message==None and current_question_index!=0:
-    #     return "Enter a message first!"
 
     if state == "intro":
         response = responses["intro"]
@@ -229,8 +230,22 @@ async def chat(data: ChatRequest):
                 )
             elif current_question_index == 1:
                 user_info["values"].extend([v.strip() for v in user_message.split(",")])
-            elif current_question_index == 6:
+            elif current_question_index == 2:
                 user_info["traits"].extend([t.strip() for t in user_message.split(",")])
+            elif current_question_index == 3:
+                user_info["traits"].extend([t.strip() for t in user_message.split(",")])
+            elif current_question_index == 4:
+                user_info["commitment"].extend(
+                    [t.strip() for t in user_message.split(",")]
+                )
+            elif current_question_index == 5:
+                user_info["resolution"].extend(
+                    [t.strip() for t in user_message.split(",")]
+                )
+            elif current_question_index == 6:
+                user_info["resolution"].extend(
+                    [t.strip() for t in user_message.split(",")]
+                )
             elif current_question_index == 7:
                 user_info["style"] = user_message.strip()
 
@@ -285,6 +300,19 @@ async def chat(data: ChatRequest):
         user_info["state"] = "awaiting_questions"
 
     user_info["conversation"].append(user_message)
+
+    if current_question_index == 8:
+        urlput = "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/updatecharacter"
+        datafinal = {
+            "email" : user_info["email"],
+            "interests": user_info["interest"],
+            "values": user_info["values"],
+            "style": user_info["style"],
+            "traits": user_info["traits"],
+            "commitment": user_info["commitment"],
+            "resolution": user_info["resolution"],
+        }
+        requests.put(urlput, json=datafinal)
 
     response_data = {
         "response": response,
@@ -361,56 +389,57 @@ async def calc(data: CalcRequest):
 
 @app.post("/match")
 async def match(data: MatchRequest):
-
     async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/getboys"
-        )
-    boys_data = response.json()
-    
-    async with httpx.AsyncClient() as client:
-        response2 = await client.get(
-            "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/getgirls"
-        )
-    girls_data = response2.json()
-    
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=response.status_code,
-            detail="Failed to retrieve data from external API",
-        )
-    if response2.status_code != 200:
-        raise HTTPException(
-            status_code=response2.status_code,
-            detail="Failed to retrieve data from external API",
+        # Fetch data from both endpoints concurrently
+        response1, response2 = await asyncio.gather(
+            client.get(
+                "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/getboys"
+            ),
+            client.get(
+                "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/getgirls"
+            ),
         )
 
-    girls = pd.DataFrame(girls_data)
-    boys = pd.DataFrame(boys_data)
+        if response1.status_code != 200:
+            raise HTTPException(
+                status_code=response1.status_code,
+                detail="Failed to retrieve boys data from external API",
+            )
+        if response2.status_code != 200:
+            raise HTTPException(
+                status_code=response2.status_code,
+                detail="Failed to retrieve girls data from external API",
+            )
+
+        boys_data = response1.json()
+        girls_data = response2.json()
+
+    girls_df = pd.DataFrame(girls_data)
+    boys_df = pd.DataFrame(boys_data)
 
     user_id = int(data.user_id)
+    current_user = girls_df[girls_df["id"] == user_id]
 
-    current_user = girls[girls["id"] == user_id]
-    
     if current_user.empty:
         raise HTTPException(status_code=404, detail="User not found")
 
     current_user = current_user.iloc[0]
-
     age_min = int(current_user["age"]) - 2
     age_max = int(current_user["age"]) + 2
 
-    potential_matches = boys[
-        (boys["age"] >= age_min) & (boys["age"] <= age_max) & (boys["id"] != user_id)
+    potential_matches = boys_df[
+        (boys_df["age"] >= age_min)
+        & (boys_df["age"] <= age_max)
+        & (boys_df["id"] != user_id)
     ]
 
     if potential_matches.empty:
         return []
 
-    all_interests = potential_matches["interests"].tolist() + [
-        current_user["interests"]
-    ]
+    potential_matches["interests"] = potential_matches["interests"].fillna("")
+    current_user_interests = current_user["interests"] or ""
 
+    all_interests = potential_matches["interests"].tolist() + [current_user_interests]
     vectorizer = CountVectorizer().fit(all_interests)
     all_vectors = vectorizer.transform(all_interests).toarray()
 
@@ -422,14 +451,13 @@ async def match(data: MatchRequest):
     ).flatten()
 
     potential_matches["similarity"] = similarity
-
     potential_matches = potential_matches.sort_values(by="similarity", ascending=False)
 
-    top_matches = potential_matches
+    # result = potential_matches[
+    #     ["id", "first_name", "last_name", "age", "location", "interests", "similarity"]
+    # ].to_dict(orient="records")
 
-    result = top_matches[
-        ["id", "first_name", "last_name", "age", "location", "interests", "similarity"]
-    ].to_dict(orient="records")
+    result = potential_matches.to_dict(orient="records")
 
     return result
 
