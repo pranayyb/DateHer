@@ -397,7 +397,7 @@ async def calc(request: CalcRequest):
 
         user1_data = user_data_list[0]
         user2_data = user_data_list[1]
-        print(user_data_list[1])
+        # print(user_data_list[1])
         if len(chat_history) > CONVERSATION_THRESHOLD:
             user1_data = {
                 "interests": user1_data.get("interests", []),
