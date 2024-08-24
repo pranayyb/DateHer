@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import tensorflow
-from flask import Flask, request, jsonify
-from tensorflow.keras.preprocessing.text import Tokenizer
+# from flask import Flask, request, jsonify
+# from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
 import numpy as np
@@ -14,14 +14,14 @@ import json
 import re
 import pandas as pd
 import httpx
-import datetime
+# import datetime
 import logging
 from nltk.corpus import stopwords
 from tensorflow.keras.preprocessing.text import one_hot
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.stem import WordNetLemmatizer
-from flask_cors import CORS
+# from flask_cors import CORS
 import asyncio
 import requests
 
