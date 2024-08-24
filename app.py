@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import tensorflow
@@ -167,10 +167,12 @@ class UserMessage(BaseModel):
     createdAt: dict
 
 
+# class CalcRequest(BaseModel):
+#     data: dict
+
+
 class CalcRequest(BaseModel):
-    user1: dict
-    user2: dict
-    message: List[UserMessage]
+    data: List[Dict]
 
 
 class MatchRequest(BaseModel):
@@ -357,29 +359,64 @@ async def chat(data: ChatRequest):
 
 
 @app.post("/calc")
-async def calc(data: CalcRequest):
+async def calc(request: CalcRequest):
     try:
         comp_score = 0
-        chat_history = [msg.text for msg in data.message]
+        chat_history = [entry["text"] for entry in request.data]
+        # print(chat_history)
 
+        sender_ids = {entry["senderId"] for entry in request.data}
+        # print(sender_ids)
+        sender_ids = list(sender_ids)
+        # print(sender_ids)
+        # print(type(sender_ids))
+        async with httpx.AsyncClient() as client:
+            response1 = await asyncio.gather(
+                client.get(
+                    "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/getallusers"
+                )
+            )
+            response1 = response1[0]
+
+            if response1.status_code != 200:
+                raise HTTPException(
+                    status_code=response1.status_code,
+                    detail="Failed to retrieve users data from external API",
+                )
+            users_data = response1.json()
+
+        users_dict = {user["id"]: user for user in users_data}
+        sender_ids_int = [int(id_str) for id_str in sender_ids]
+        
+        user_data = {user_id: users_dict.get(user_id) for user_id in sender_ids_int}
+        user_data_list = list(user_data.values())
+        # print(user_data_list)
+        # Extract individual user data if needed
+        # user1_data = user_data_list.get(sender_ids_int[0])
+        # user2_data = user_data_list.get(sender_ids_int[1]) if len(sender_ids_int) > 1 else None
+
+        user1_data = user_data_list[0]
+        user2_data = user_data_list[1]
+        print(user_data_list[1])
         if len(chat_history) > CONVERSATION_THRESHOLD:
             user1_data = {
-                "interests": data.user1.get("interests", []),
-                "values": data.user1.get("values", []),
-                "style": data.user1.get("style", ""),
-                "traits": data.user1.get("traits", []),
-                "commitment": data.user1.get("commitment", []),
-                "resolution": data.user1.get("resolution", []),
+                "interests": user1_data.get("interests", []),
+                "values": user1_data.get("values", []),
+                "style": user1_data.get("style", ""),
+                "traits": user1_data.get("traits", []),
+                "commitment": user1_data.get("commitment", []),
+                "resolution": user1_data.get("resolution", []),
             }
             user2_data = {
-                "interests": data.user2.get("interests", []),
-                "values": data.user2.get("values", []),
-                "style": data.user2.get("style", ""),
-                "traits": data.user2.get("traits", []),
-                "commitment": data.user2.get("commitment", []),
-                "resolution": data.user2.get("resolution", []),
+                "interests": user2_data.get("interests", []),
+                "values": user2_data.get("values", []),
+                "style": user2_data.get("style", ""),
+                "traits": user2_data.get("traits", []),
+                "commitment": user2_data.get("commitment", []),
+                "resolution": user2_data.get("resolution", []),
             }
-
+            print(user1_data, user2_data)
+            # Calculate different scores
             shared_interests = calculate_shared_interests(
                 user1_data["interests"], user2_data["interests"]
             )
@@ -412,7 +449,7 @@ async def calc(data: CalcRequest):
 
             comp_score = f"{final_score:.2f}"
         else:
-            comp_score = "Conversation threshold not reached yet to calculate compatibility score!."
+            comp_score = "Conversation threshold not reached yet to calculate compatibility score!"
 
         return {"comp_score": comp_score}
     except Exception as e:
