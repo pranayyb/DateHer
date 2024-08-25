@@ -4,6 +4,7 @@ from typing import List, Optional, Dict
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import tensorflow
+
 # from flask import Flask, request, jsonify
 # from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -14,6 +15,7 @@ import json
 import re
 import pandas as pd
 import httpx
+
 # import datetime
 import logging
 from nltk.corpus import stopwords
@@ -21,11 +23,31 @@ from tensorflow.keras.preprocessing.text import one_hot
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.stem import WordNetLemmatizer
+
 # from flask_cors import CORS
 import asyncio
 import requests
+import nltk
 
+MIN_CORPORA = [
+    "brown",  # Required for FastNPExtractor
+    "punkt",  # Required for WordTokenizer
+    "wordnet",  # Required for lemmatization
+    "averaged_perceptron_tagger",  # Required for NLTKTagger
+]
 
+ADDITIONAL_CORPORA = [
+    "conll2000",  # Required for ConllExtractor
+    "movie_reviews",  # Required for NaiveBayesAnalyzer
+]
+
+ALL_CORPORA = MIN_CORPORA + ADDITIONAL_CORPORA
+
+for each in ALL_CORPORA:
+    nltk.download(each)
+
+nltk.download("punkt_tab")
+nltk.download('averaged_perceptron_tagger_eng')
 with open("intents.json") as f:
     data = json.load(f)
 
@@ -387,7 +409,7 @@ async def calc(request: CalcRequest):
 
         users_dict = {user["id"]: user for user in users_data}
         sender_ids_int = [int(id_str) for id_str in sender_ids]
-        
+
         user_data = {user_id: users_dict.get(user_id) for user_id in sender_ids_int}
         user_data_list = list(user_data.values())
         # print(user_data_list)
