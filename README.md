@@ -26,8 +26,8 @@ This project provides a FastAPI-based web service that offers various functional
 
 1. **Clone the Repository**:
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/pranayyb/DateHer.git
+    cd https://github.com/pranayyb/DateHer.git
     ```
 
 2. **Create a Virtual Environment (optional but recommended)**:
