@@ -148,7 +148,7 @@ This project provides a FastAPI-based web service that offers various functional
 
 ## Notes
 
-- Ensure your machine learning model files and pickled objects are correctly placed and named.
+- Ensure your machine learning model files and pickled objects are correctly placed and named!.
 - Adjust CORS settings as needed for your deployment environment.
 
 ## Contributing
