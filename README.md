@@ -4,7 +4,7 @@ This project provides a FastAPI-based web service that offers various functional
 
 ## Features
 
-- **Chat Interaction**: Engages users in conversation, asks questions, and provides responses based on predefined intents.
+- **Chat Interaction**: Engages users in conversation, asks questions, and provides responses based on predefined intents. Fisrt it will ask some questions to set the parameters and then you can ask the chatbot questions related to relationship and stuffs.
 - **Compatibility Scoring**: Computes compatibility scores between users based on their interaction history and profile attributes.
 - **Matchmaking**: Finds potential matches based on user preferences and profile data.
 - **Emotion Prediction**: Predicts the emotional tone of a given text using a pre-trained model.
