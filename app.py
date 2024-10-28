@@ -153,7 +153,6 @@ def predict(text):
         logging.error(f"Prediction error: {e}")
         raise HTTPException(status_code=500, detail="Error in prediction")
 
-
 def answer(text):
     try:
         predicted_label = predict(text)
@@ -338,40 +337,42 @@ async def chat(data: ChatRequest):
                     response = gen(user_message)
                     user_info["state"] = "awaiting_questions"
         elif state == "awaiting_questions":
-            response = answer(user_message)
-            predicted_label = predict(user_message)
+            # response = answer(user_message)
+            response=gen(user_message)
+            # predicted_label = predict(user_message)
 
-            if predicted_label == "farewell":
-                user_info["state"] = "farewell"
-            else:
-                user_info["state"] = "awaiting_questions"
+            # if predicted_label == "farewell":
+            #     user_info["state"] = "farewell"
+            # else:
+            #     user_info["state"] = "awaiting_questions"
 
-        elif state == "farewell":
-            response = responses["farewell"]
-            user_info["state"] = "new"
+        # elif state == "farewell":
+        #     response = responses["farewell"]
+            # user_info["state"] = "new"
 
         elif state == "new":
-            response = answer(user_message)
-            predicted_label = predict(user_message)
+            response = gen(user_message)
+            # predicted_label = predict(user_message)
             user_info["state"] = "awaiting_questions"
 
         user_info["conversation"].append(user_message)
 
-        if current_question_index == 8:
-            urlput = "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/updatecharacter"
-            datafinal = {
-                "email": user_info.get("email", ""),
-                "interests": user_info.get("interests", []),
-                "values": user_info.get("values", []),
-                "style": user_info.get("style", ""),
-                "traits": user_info.get("traits", []),
-                "commitment": user_info.get("commitment", []),
-                "resolution": user_info.get("resolution", []),
-            }
-            try:
-                requests.put(urlput, json=datafinal)
-            except requests.RequestException as e:
-                logging.error(f"Error updating user character: {e}")
+        #implement this after link of aws is corrected!
+        # if current_question_index == 8:
+        #     urlput = "http://ec2-3-7-69-234.ap-south-1.compute.amazonaws.com:3001/updatecharacter"
+        #     datafinal = {
+        #         "email": user_info.get("email", ""),
+        #         "interests": user_info.get("interests", []),
+        #         "values": user_info.get("values", []),
+        #         "style": user_info.get("style", ""),
+        #         "traits": user_info.get("traits", []),
+        #         "commitment": user_info.get("commitment", []),
+        #         "resolution": user_info.get("resolution", []),
+        #     }
+        #     try:
+        #         requests.put(urlput, json=datafinal)
+        #     except requests.RequestException as e:
+        #         logging.error(f"Error updating user character: {e}")
 
         response_data = {
             "response": response,

@@ -8,7 +8,7 @@ from nltk.tokenize import word_tokenize
 # from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from textblob import TextBlob
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -21,10 +21,15 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def calculate_value_matchC(conversation, values):
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    conversation_embeddings = model.encode(
-        [msg for msg in conversation if msg is not None]
-    )
+    # model = SentenceTransformer("all-MiniLM-L6-v2")
+    try:
+        conversation_embeddings = model.encode([msg for msg in conversation if msg is not None])
+    except Exception as e:
+        print(f"Error encoding conversation: {e}")
+        return 0  # Or handle it appropriately
+    # conversation_embeddings = model.encode(
+    #     [msg for msg in conversation if msg is not None]
+    # )
     value_embeddings = model.encode(values)
     similarities = cosine_similarity(conversation_embeddings, value_embeddings)
     score = np.sum(np.max(similarities, axis=1))
@@ -300,7 +305,7 @@ def calculate_final_scoreC(
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def get_sentence_embedding(text_list):
