@@ -12,3 +12,4 @@ requests
 gensim
 textblob
 spacy
+astrapy

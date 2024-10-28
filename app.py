@@ -41,17 +41,28 @@ ADDITIONAL_CORPORA = [
     "movie_reviews",  # Required for NaiveBayesAnalyzer
 ]
 
+
+from groq import Groq
+import os
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+
+from chat_model import GroqLLM
+model_name="mixtral-8x7b-32768"
+model = GroqLLM(api_key=GROQ_API_KEY, model_name=model_name)
+
 ALL_CORPORA = MIN_CORPORA + ADDITIONAL_CORPORA
 
 for each in ALL_CORPORA:
     nltk.download(each)
 
 nltk.download("punkt_tab")
-nltk.download('averaged_perceptron_tagger_eng')
+nltk.download("averaged_perceptron_tagger_eng")
 with open("intents.json") as f:
     data = json.load(f)
 
-model = tensorflow.keras.models.load_model(r"chatbot_model.h5")
+# model = tensorflow.keras.models.load_model(r"chatbot_model.h5")
 lemmatizer = WordNetLemmatizer()
 
 from scoring import (
@@ -123,11 +134,11 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-with open("tokenizer.pickle", "rb") as handle:
-    tokenizer = pickle.load(handle)
+# with open("tokenizer.pickle", "rb") as handle:
+#     tokenizer = pickle.load(handle)
 
-with open("emotion.pkl", "rb") as f:
-    emotion = pickle.load(f)
+# with open("emotion.pkl", "rb") as f:
+#     emotion = pickle.load(f)
 
 
 def predict(text):
@@ -189,10 +200,6 @@ class UserMessage(BaseModel):
     createdAt: dict
 
 
-# class CalcRequest(BaseModel):
-#     data: dict
-
-
 class CalcRequest(BaseModel):
     data: List[Dict]
 
@@ -204,6 +211,8 @@ class MatchRequest(BaseModel):
 class TonePredictRequest(BaseModel):
     text: str
 
+
+from chat_model import char, gen
 
 @app.post("/chat")
 async def chat(data: ChatRequest):
@@ -248,7 +257,7 @@ async def chat(data: ChatRequest):
             response = responses["intro"]
             user_info["state"] = "greet"
         elif state == "greet":
-            response = responses["greet"]
+            response = responses['greet']
             user_info["state"] = "ask_for_questions"
         elif state == "ask_for_questions":
             if any(word in user_message.lower() for word in affirmative_words):
@@ -260,35 +269,37 @@ async def chat(data: ChatRequest):
         elif state == "asking_questions":
             if current_question_index < len(questions):
                 if current_question_index == 0:
-                    user_info["interests"].extend(
-                        [i.strip() for i in user_message.split(",")]
-                    )
+                    lts = char(user_message, "interests")
+                    user_info["interests"] = lts if lts is not None else []
                 elif current_question_index == 1:
-                    user_info["values"].extend(
-                        [v.strip() for v in user_message.split(",")]
-                    )
+                    lts = char(user_message, "values")
+                    user_info["values"] = user_info.get("values", [])
+                    user_info["values"].extend(lts if lts is not None else [])
                 elif current_question_index == 2:
-                    user_info["traits"].extend(
-                        [t.strip() for t in user_message.split(",")]
-                    )
+                    lts = char(user_message, "traits")
+                    user_info["traits"] = user_info.get("traits", [])
+                    user_info["traits"].extend(lts if lts is not None else [])
                 elif current_question_index == 3:
-                    user_info["traits"].extend(
-                        [t.strip() for t in user_message.split(",")]
-                    )
+                    lts = char(user_message, "traits")
+                    user_info["traits"] = user_info.get("traits", [])
+                    user_info["traits"].extend(lts if lts is not None else [])
                 elif current_question_index == 4:
-                    user_info["commitment"].extend(
-                        [t.strip() for t in user_message.split(",")]
-                    )
+                    lts = char(user_message, "commitment")
+                    user_info["commitment"] = user_info.get("commitment", [])
+                    user_info["commitment"].extend(lts if lts is not None else [])
                 elif current_question_index == 5:
-                    user_info["resolution"].extend(
-                        [t.strip() for t in user_message.split(",")]
-                    )
+                    lts = char(user_message, "resolution")
+                    user_info["resolution"] = user_info.get("resolution", [])
+                    user_info["resolution"].extend(lts if lts is not None else [])
                 elif current_question_index == 6:
-                    user_info["resolution"].extend(
-                        [t.strip() for t in user_message.split(",")]
-                    )
+                    lts = char(user_message, "resolution")
+                    user_info["resolution"] = user_info.get("resolution", [])
+                    user_info["resolution"].extend(lts if lts is not None else [])
                 elif current_question_index == 7:
-                    user_info["style"] = user_message.strip()
+                    lts = char(user_message, "style")
+                    user_info["style"] = user_info.get("style", [])
+                    user_info["style"].extend(lts if lts is not None else [])
+
 
                 current_question_index += 1
                 user_info["current_question_index"] = current_question_index
@@ -324,7 +335,7 @@ async def chat(data: ChatRequest):
 
                     comp = f"{final_score:.2f}"
                     user_info["state"] = "thank_you"
-                    response = responses["thank_you"]
+                    response = gen(user_message)
                     user_info["state"] = "awaiting_questions"
         elif state == "awaiting_questions":
             response = answer(user_message)
