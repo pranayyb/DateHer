@@ -1,6 +1,6 @@
 # DateHer - Your Ultimate Dating Companion
 
-DateHer is an AI-powered dating platform that enhances matchmaking through personalized chatbot interactions, compatibility scoring, and emotional tone analysis. Our intelligent system ensures users connect with like-minded individuals based on shared interests and communication styles.
+DateHer is an AI-powered dating platform designed to enhance matchmaking through intelligent chatbot interactions, compatibility scoring, and emotional tone analysis. The platform leverages Agentic Retrieval-Augmented Generation (RAG) to personalize conversations and extract meaningful insights from user interactions. By integrating optimized matchmaking algorithms, DateHer ensures users connect with like-minded individuals by assessing their interests, values, and communication styles efficiently.
 
 ## Features
 
