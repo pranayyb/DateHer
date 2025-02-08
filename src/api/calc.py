@@ -102,7 +102,7 @@ async def calc(request: CalcRequest):
         else:
             comp_score = "Conversation threshold not reached yet to calculate compatibility score!"
 
-        return {"comp_score": comp_score}
+        return {"compatibility_score": comp_score}
     except Exception as e:
         logging.error(f"Calc endpoint error: {e}")
         raise HTTPException(
