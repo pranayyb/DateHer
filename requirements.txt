@@ -2,8 +2,6 @@ fastapi
 uvicorn
 pydantic
 tensorflow
-flask
-flask-cors
 httpx
 pandas
 nltk
@@ -13,3 +11,11 @@ gensim
 textblob
 spacy
 astrapy
+wikipedia
+langchain
+python-dotenv
+langchain_groq
+transformers
+langchain_astradb
+sentence-transformers
+tf-keras
